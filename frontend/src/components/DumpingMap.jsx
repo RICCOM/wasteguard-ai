@@ -81,6 +81,7 @@
 //     </MapContainer>
 //   );
 // }
+
 import { useEffect, useState } from "react";
 import L from "leaflet";
 import {
@@ -108,9 +109,21 @@ export default function DumpingMap() {
   }, []);
 
   const pointToLayer = (feature, latlng) => {
+    const risk = feature.properties?.risk_level;
+
+    let fillColor = "#22c55e";
+
+    if (risk === "HIGH") {
+      fillColor = "#f59e0b";
+    }
+
+    if (risk === "CRITICAL") {
+      fillColor = "#ef4444";
+    }
+
     return L.circleMarker(latlng, {
       radius: 12,
-      fillColor: "#ef4444",
+      fillColor,
       color: "#ffffff",
       weight: 3,
       opacity: 1,
@@ -122,20 +135,36 @@ export default function DumpingMap() {
     const site = feature.properties;
 
     layer.bindPopup(`
-      <div style="min-width: 200px;">
+      <div style="min-width: 220px;">
         <h3>${site.case_id}</h3>
-        <p><strong>Risk:</strong> ${site.risk_level}</p>
-        <p><strong>Risk Score:</strong> ${site.risk_score}</p>
+
+        <p>
+          <strong>Risk:</strong>
+          ${site.risk_level}
+        </p>
+
+        <p>
+          <strong>Risk Score:</strong>
+          ${site.risk_score}
+        </p>
+
         <p>
           <strong>Waste Probability:</strong>
-          ${Math.round(site.waste_probability * 100)}%
+          ${Math.round(
+            site.waste_probability * 100
+          )}%
         </p>
+
         <p>
           <strong>AI Confidence:</strong>
-          ${Math.round(site.confidence * 100)}%
+          ${Math.round(
+            site.confidence * 100
+          )}%
         </p>
+
         <p>
-          <strong>Area:</strong> ${site.area_m2} m²
+          <strong>Area:</strong>
+          ${site.area_m2} m²
         </p>
       </div>
     `);
@@ -151,7 +180,7 @@ export default function DumpingMap() {
 
   return (
     <MapContainer
-      center={[-1.286389, 36.817223]}
+      center={[-1.275, 36.805]}
       zoom={13}
       style={{
         height: "100%",
@@ -165,6 +194,7 @@ export default function DumpingMap() {
 
       {geojson && (
         <GeoJSON
+          key={JSON.stringify(geojson)}
           data={geojson}
           pointToLayer={pointToLayer}
           onEachFeature={onEachFeature}

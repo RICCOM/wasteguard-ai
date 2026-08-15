@@ -6,9 +6,8 @@ from extensions import db
 
 from models.dumping_site import DumpingSite
 from routes.dumping_sites import dumping_sites_bp
+from routes.detections import detections_bp
 
-# from models.dumping_site import DumpingSite
-# from routes.dumping_sites import dumping_sites_bp
 
 def create_app():
     app = Flask(__name__)
@@ -19,9 +18,15 @@ def create_app():
 
     db.init_app(app)
 
+    # Existing dumping sites API
     app.register_blueprint(
         dumping_sites_bp,
         url_prefix="/api/dumping-sites"
+    )
+
+    # AI detection API
+    app.register_blueprint(
+        detections_bp
     )
 
     @app.get("/api/health")

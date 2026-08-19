@@ -1,61 +1,6 @@
 import { useEffect, useState } from "react";
-import {
-  Activity,
-  AlertTriangle,
-  Bot,
-  MapPinned,
-  RefreshCw,
-  ShieldAlert,
-} from "lucide-react";
-
 import DumpingMap from "./components/DumpingMap";
-
-import {
-  getDumpingSites,
-  runAIDetection,
-} from "./services/api";
-
-function StatCard({
-  title,
-  value,
-  description,
-  icon,
-  variant = "",
-}) {
-  return (
-    <div className={`stat-card ${variant}`}>
-      <div className="stat-card-top">
-        <div>
-          <p className="stat-label">{title}</p>
-          <p className="stat-value">{value}</p>
-        </div>
-
-        <div className="stat-icon">
-          {icon}
-        </div>
-      </div>
-
-      <p className="stat-description">
-        {description}
-      </p>
-    </div>
-  );
-}
-
-function getRiskClass(riskLevel) {
-  switch (riskLevel) {
-    case "CRITICAL":
-      return "risk-critical";
-    case "HIGH":
-      return "risk-high";
-    case "MEDIUM":
-      return "risk-medium";
-    case "LOW":
-      return "risk-low";
-    default:
-      return "";
-  }
-}
+import { getDumpingSites, runAIDetection } from "./services/api";
 
 function App() {
   const [sites, setSites] = useState([]);
@@ -64,11 +9,15 @@ function App() {
   const [error, setError] = useState(null);
   const [message, setMessage] = useState(null);
 
+  const [selectedSite, setSelectedSite] = useState(null);
+
   async function loadSites() {
     try {
       setError(null);
+      setLoading(true);
 
       const result = await getDumpingSites();
+
       setSites(result.data || []);
     } catch (err) {
       console.error(err);
@@ -90,9 +39,7 @@ function App() {
 
       const result = await runAIDetection();
 
-      setMessage(
-        `${result.data.case_id} detected successfully`
-      );
+      setMessage(`${result.data.case_id} detected successfully`);
 
       await loadSites();
     } catch (err) {
@@ -103,12 +50,14 @@ function App() {
     }
   }
 
-  const criticalRisk = sites.filter(
-    (site) => site.risk_level === "CRITICAL"
+  const highRisk = sites.filter(
+    (site) =>
+      site.risk_level === "HIGH" ||
+      site.risk_level === "CRITICAL"
   ).length;
 
-  const highRisk = sites.filter(
-    (site) => site.risk_level === "HIGH"
+  const criticalRisk = sites.filter(
+    (site) => site.risk_level === "CRITICAL"
   ).length;
 
   const totalArea = sites.reduce(
@@ -124,27 +73,40 @@ function App() {
         ) / sites.length
       : 0;
 
+  function formatDateTime(dateString) {
+    if (!dateString) {
+      return "Not available";
+    }
+
+    const date = new Date(dateString);
+
+    return date.toLocaleString("en-KE", {
+      dateStyle: "medium",
+      timeStyle: "short",
+    });
+  }
+
+  function getRiskClass(riskLevel) {
+    return `risk-${riskLevel?.toLowerCase()}`;
+  }
+
   return (
     <div className="app">
       <header className="header">
         <div className="header-content">
           <div className="brand">
-            <div className="brand-icon">
-              <ShieldAlert size={28} />
-            </div>
-
             <div>
               <h1>WasteGuard AI</h1>
+
               <p>
-                Illegal Dumping Monitoring &
-                Intelligence Platform
+                Illegal Dumping Monitoring & Intelligence Platform
               </p>
             </div>
           </div>
 
           <div className="header-actions">
             <div className="system-status">
-              <span className="status-dot" />
+              <span className="status-dot"></span>
               System Online
             </div>
 
@@ -153,121 +115,239 @@ function App() {
               onClick={handleRunDetection}
               disabled={detecting}
             >
-              <RefreshCw
-                size={18}
-                className={
-                  detecting ? "spin-icon" : ""
-                }
-              />
-
               {detecting
-                ? "Running Detection..."
-                : "Run AI Detection"}
+                ? "Running AI Detection..."
+                : "↻ Run AI Detection"}
             </button>
           </div>
         </div>
       </header>
 
       <main className="main-content">
+
         {error && (
           <div className="error-message">
-            <AlertTriangle size={20} />
-            <div>
-              <strong>API Error</strong>
-              <p>{error}</p>
-            </div>
+            API Error: {error}
           </div>
         )}
 
         {message && (
           <div className="success-message">
-            <Activity size={20} />
-            {message}
+            ✓ {message}
           </div>
         )}
 
         <section className="stats-grid">
-          <StatCard
-            title="Detected Sites"
-            value={loading ? "..." : sites.length}
-            description="Total monitored cases"
-            icon={<MapPinned size={24} />}
-          />
 
-          <StatCard
-            title="Critical Cases"
-            value={loading ? "..." : criticalRisk}
-            description="Immediate attention required"
-            icon={<ShieldAlert size={24} />}
-            variant="critical-card"
-          />
+          <div className="stat-card">
+            <p className="stat-label">
+              Detected Sites
+            </p>
 
-          <StatCard
-            title="High Risk"
-            value={loading ? "..." : highRisk}
-            description="Requires investigation"
-            icon={<AlertTriangle size={24} />}
-            variant="high-card"
-          />
+            <p className="stat-value">
+              {loading ? "..." : sites.length}
+            </p>
 
-          <StatCard
-            title="Affected Area"
-            value={
-              loading
+            <p className="stat-description">
+              Total monitored cases
+            </p>
+          </div>
+
+          <div className="stat-card critical-card">
+            <p className="stat-label">
+              Critical Cases
+            </p>
+
+            <p className="stat-value critical-risk">
+              {loading ? "..." : criticalRisk}
+            </p>
+
+            <p className="stat-description">
+              Immediate attention required
+            </p>
+          </div>
+
+          <div className="stat-card high-card">
+            <p className="stat-label">
+              High Risk
+            </p>
+
+            <p className="stat-value high-risk">
+              {loading ? "..." : highRisk - criticalRisk}
+            </p>
+
+            <p className="stat-description">
+              Requires investigation
+            </p>
+          </div>
+
+          <div className="stat-card">
+            <p className="stat-label">
+              Affected Area
+            </p>
+
+            <p className="stat-value">
+              {loading
                 ? "..."
                 : `${totalArea.toLocaleString(
                     undefined,
                     {
-                      maximumFractionDigits: 0,
+                      maximumFractionDigits: 1,
                     }
-                  )} m²`
-            }
-            description="Estimated dumping footprint"
-            icon={<MapPinned size={24} />}
-          />
+                  )} m²`}
+            </p>
 
-          <StatCard
-            title="AI Confidence"
-            value={
-              loading
+            <p className="stat-description">
+              Estimated dumping footprint
+            </p>
+          </div>
+
+          <div className="stat-card">
+            <p className="stat-label">
+              AI Confidence
+            </p>
+
+            <p className="stat-value">
+              {loading
                 ? "..."
                 : `${Math.round(
                     averageConfidence * 100
-                  )}%`
-            }
-            description="Average detection confidence"
-            icon={<Bot size={24} />}
-          />
+                  )}%`}
+            </p>
+
+            <p className="stat-description">
+              Average detection confidence
+            </p>
+          </div>
+
         </section>
 
         <section className="map-section">
+
           <div className="map-header">
             <div>
-              <div className="section-title-row">
-                <MapPinned size={22} />
-
-                <h2>
-                  Dumping Site Monitoring Map
-                </h2>
-              </div>
+              <h2>⌖ Dumping Site Monitoring Map</h2>
 
               <p>
-                Satellite and AI-detected potential
-                illegal dumping locations
+                Satellite and AI-detected potential illegal dumping locations
               </p>
             </div>
 
-            <div className="map-count">
+            <span className="case-badge">
               {sites.length} active cases
-            </div>
+            </span>
           </div>
 
           <div className="map-container">
-            <DumpingMap />
+            <DumpingMap
+              sites={sites}
+              selectedSite={selectedSite}
+              setSelectedSite={setSelectedSite}
+            />
           </div>
+
         </section>
 
+        {selectedSite && (
+          <section className="selected-site-section">
+
+            <div className="selected-site-header">
+              <div>
+                <h2>
+                  Selected Case: {selectedSite.case_id}
+                </h2>
+
+                <p>
+                  Detailed detection information
+                </p>
+              </div>
+
+              <button
+                className="close-button"
+                onClick={() => setSelectedSite(null)}
+              >
+                Close
+              </button>
+            </div>
+
+            <div className="site-details-grid">
+
+              <div className="site-detail">
+                <span>Risk Level</span>
+
+                <strong
+                  className={getRiskClass(
+                    selectedSite.risk_level
+                  )}
+                >
+                  {selectedSite.risk_level}
+                </strong>
+              </div>
+
+              <div className="site-detail">
+                <span>Risk Score</span>
+
+                <strong>
+                  {selectedSite.risk_score}
+                </strong>
+              </div>
+
+              <div className="site-detail">
+                <span>Waste Probability</span>
+
+                <strong>
+                  {Math.round(
+                    selectedSite.waste_probability * 100
+                  )}
+                  %
+                </strong>
+              </div>
+
+              <div className="site-detail">
+                <span>AI Confidence</span>
+
+                <strong>
+                  {Math.round(
+                    selectedSite.confidence * 100
+                  )}
+                  %
+                </strong>
+              </div>
+
+              <div className="site-detail">
+                <span>Area</span>
+
+                <strong>
+                  {selectedSite.area_m2} m²
+                </strong>
+              </div>
+
+              <div className="site-detail">
+                <span>Detected Date & Time</span>
+
+                <strong>
+                  {formatDateTime(
+                    selectedSite.first_detected ||
+                    selectedSite.created_at
+                  )}
+                </strong>
+              </div>
+
+            </div>
+
+            <div className="ai-summary">
+              <h3>AI Analysis</h3>
+
+              <p>
+                {selectedSite.ai_summary}
+              </p>
+            </div>
+
+          </section>
+        )}
+
         <section className="cases-section">
+
           <div className="section-header">
             <div>
               <h2>Detection Intelligence</h2>
@@ -277,13 +357,15 @@ function App() {
               </p>
             </div>
 
-            <span className="case-count">
+            <span className="case-badge">
               {sites.length} cases
             </span>
           </div>
 
           <div className="table-wrapper">
-            <table>
+
+            <table className="cases-table">
+
               <thead>
                 <tr>
                   <th>Case ID</th>
@@ -292,15 +374,27 @@ function App() {
                   <th>Waste Probability</th>
                   <th>Confidence</th>
                   <th>Area</th>
+                  <th>Detected Date & Time</th>
                   <th>Status</th>
                 </tr>
               </thead>
 
               <tbody>
+
                 {sites.map((site) => (
-                  <tr key={site.id}>
+                  <tr
+                    key={site.id}
+                    onClick={() => setSelectedSite(site)}
+                    className={
+                      selectedSite?.id === site.id
+                        ? "selected-row"
+                        : ""
+                    }
+                  >
                     <td>
-                      <strong>{site.case_id}</strong>
+                      <strong>
+                        {site.case_id}
+                      </strong>
                     </td>
 
                     <td>
@@ -313,40 +407,58 @@ function App() {
                       </span>
                     </td>
 
-                    <td>{site.risk_score}</td>
+                    <td>
+                      {site.risk_score}
+                    </td>
 
                     <td>
                       {Math.round(
                         site.waste_probability * 100
-                      )}%
+                      )}
+                      %
                     </td>
 
                     <td>
                       {Math.round(
                         site.confidence * 100
-                      )}%
+                      )}
+                      %
                     </td>
 
                     <td>
-                      {Number(
-                        site.area_m2 || 0
-                      ).toLocaleString()} m²
+                      {site.area_m2} m²
+                    </td>
+
+                    <td className="date-time">
+                      {formatDateTime(
+                        site.first_detected ||
+                        site.created_at
+                      )}
                     </td>
 
                     <td>
                       <span className="status-badge">
-                        {site.status.replace(
-                          "_",
-                          " "
-                        )}
+                        {site.status
+                          ?.replace("_", " ")
+                          .replace(
+                            /\b\w/g,
+                            (char) =>
+                              char.toUpperCase()
+                          )}
                       </span>
                     </td>
+
                   </tr>
                 ))}
+
               </tbody>
+
             </table>
+
           </div>
+
         </section>
+
       </main>
     </div>
   );
